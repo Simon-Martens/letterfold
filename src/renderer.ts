@@ -1,3 +1,5 @@
+import { visibleBorderSegments } from "./border-visibility";
+import { sealGeometry, type PaperSealOptions } from "./seal";
 import {
   exportSchematicSvg,
   type SchematicSvgOptions,
@@ -80,6 +82,7 @@ function letterTexture() {
 export type PaperSide = "front" | "back";
 
 export interface PaperRendererOptions {
+  seal?: boolean | PaperSealOptions;
   borders?: boolean;
   /** Screen-space stroke width in CSS pixels, from 0.5 to 8. */
   borderWidth?: number;
@@ -104,6 +107,16 @@ export class ThreePaperRenderer {
     roughness: 1,
     side: THREE.DoubleSide,
   });
+  private sealOptions: PaperSealOptions | null = null;
+  private seal = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshStandardMaterial({
+      color: 0x992c26,
+      roughness: 0.72,
+      side: THREE.DoubleSide,
+    }),
+  );
+  private sealStamp = -1;
   private meshRevision = -1;
   private stateVersion = -1;
   private front: THREE.MeshStandardMaterial;
@@ -253,7 +266,8 @@ export class ThreePaperRenderer {
     this.borders.visible = options.borders ?? false;
     this.setBorderWidth(options.borderWidth ?? 2);
     this.borderMaterial.color.set(options.borderColor ?? 0x000000);
-    this.scene.add(this.creases, this.borders);
+    this.scene.add(this.creases, this.borders, this.seal);
+    this.setSeal(options.seal ?? false);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(element);
     this.resize();
@@ -478,11 +492,46 @@ export class ThreePaperRenderer {
         { geometry: this.geometry, side: "front" },
         { geometry: this.backGeometry, side: "back" },
         { geometry: this.edgeGeometry, side: "both" },
+        ...(this.seal.visible
+          ? [
+              {
+                geometry: this.seal.geometry,
+                side: "both" as const,
+                color: "#992c26",
+              },
+            ]
+          : []),
       ],
       strokes,
       camera,
       { ...options, width, height },
     );
+  }
+  /** Add decorative wax across the closing seam. Hidden until fully folded. */
+  setSeal(options: boolean | PaperSealOptions) {
+    const next =
+      options === false ? null : options === true ? {} : { ...options };
+    if (next) {
+      const check = sealGeometry(this.simulation, next);
+      check.dispose();
+    }
+    this.sealOptions = next;
+    this.sealStamp = -1;
+    this.borderStamp = "";
+    this.seal.visible = false;
+  }
+  private updateSeal() {
+    this.seal.visible =
+      this.sealOptions !== null && (this.simulation.progress ?? 0) >= 1;
+    if (
+      !this.seal.visible ||
+      (this.simulation.stateVersion !== undefined &&
+        this.sealStamp === this.simulation.stateVersion)
+    )
+      return;
+    this.seal.geometry.dispose();
+    this.seal.geometry = sealGeometry(this.simulation, this.sealOptions!);
+    this.sealStamp = this.simulation.stateVersion ?? -1;
   }
   setCreases(value: boolean) {
     this.creases.visible = value;
@@ -628,6 +677,7 @@ export class ThreePaperRenderer {
     }
     if (this.followCamera) this.updateCameraSequence();
     else this.controls.update();
+    this.updateSeal();
     this.updateBorders();
     this.renderer.render(this.scene, this.camera);
   }
@@ -635,7 +685,7 @@ export class ThreePaperRenderer {
     if (!this.borders.visible) return;
     const paper = this.simulation,
       camera = this.camera.position;
-    const stamp = `${this.stateVersion}:${camera.x}:${camera.y}:${camera.z}`;
+    const stamp = `${this.stateVersion}:${camera.x}:${camera.y}:${camera.z}:${this.camera.quaternion.toArray()}:${this.camera.projectionMatrix.elements}`;
     if (paper.stateVersion !== undefined && stamp === this.borderStamp) return;
     this.borderStamp = stamp;
     const p = paper.positions;
@@ -692,7 +742,19 @@ export class ThreePaperRenderer {
     }
     this.borderGeometry.dispose();
     this.borderGeometry = new LineSegmentsGeometry();
-    this.borderGeometry.setPositions(lines.length ? lines : [0, 0, 0, 0, 0, 0]);
+    const visible = visibleBorderSegments(
+      lines,
+      [
+        this.geometry,
+        this.backGeometry,
+        this.edgeGeometry,
+        ...(this.seal.visible ? [this.seal.geometry] : []),
+      ],
+      this.camera,
+    );
+    this.borderGeometry.setPositions(
+      visible.length ? visible : [0, 0, 0, 0, 0, 0],
+    );
     this.borders.geometry = this.borderGeometry;
   }
   dispose() {
@@ -705,6 +767,8 @@ export class ThreePaperRenderer {
     this.backGeometry.dispose();
     this.edgeGeometry.dispose();
     this.edgeMaterial.dispose();
+    this.seal.geometry.dispose();
+    this.seal.material.dispose();
     this.creaseGeometry.dispose();
     this.borderGeometry.dispose();
     this.borderMaterial.dispose();

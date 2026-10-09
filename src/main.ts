@@ -1,3 +1,4 @@
+import { recordWebm, webmMimeType } from "./webm-export";
 import { svgZip } from "./zip";
 import { createPaper, type Pattern } from "./paper";
 import { ThreePaperRenderer, type PaperSide } from "./renderer";
@@ -10,14 +11,17 @@ const root = document.querySelector<HTMLDivElement>("#app")!;
 root.innerHTML = `
 <header><a class="brand" href="./"><span class="brand-icon">⌑</span> letterfold<span class="version">LAB / 001</span></a><div class="header-right"><span class="status-dot"></span> An exploration in paper & motion <a href="https://github.com/mrdoob/three.js" target="_blank" rel="noreferrer" aria-label="Three.js on GitHub">↗</a></div></header>
 <main><section class="intro"><div><p class="eyebrow">THE PAPER FOLDING LABORATORY</p><h1>A simple sheet.<br>A world of possibilities.</h1><p class="description">Explore the quiet mechanics of folding paper.<br>A real 3D mesh, shaped one crease at a time.</p></div><div class="intro-note"><span>01 — MATERIAL STUDY</span><p>From an open letter<br>to a small, folded keepsake.</p></div></section>
-<div class="workspace"><section class="stage" aria-label="Paper simulation"><div class="stage-top"><span><i class="status-dot"></i> LIVE SIMULATION</span><span id="view-label">PERSPECTIVE VIEW</span></div><div id="viewer"></div><div class="view-buttons"><button id="home" title="Perspective view" aria-label="Perspective view">◇</button><button id="top" title="Top view" aria-label="Top view">▱</button><button id="fit" title="Fit paper in view" aria-label="Fit paper in view">⊡</button><button id="reset" title="Reset paper" aria-label="Reset paper">↺</button></div><div class="stage-bottom"><span>↔ Drag to orbit <b>·</b> Scroll to zoom</span><span>210 × 297 mm <b>·</b> A4</span></div></section>
+<div class="workspace"><section class="stage" aria-label="Paper simulation"><div class="stage-top"><span><i class="status-dot"></i> LIVE SIMULATION</span><span id="view-label">PERSPECTIVE VIEW</span></div><div id="viewer"></div><div class="view-buttons"><button id="home" title="Perspective view" aria-label="Perspective view">◇</button><button id="top" title="Top view" aria-label="Top view">▱</button><button id="fit" title="Fit paper in view" aria-label="Fit paper in view">⊡</button><button id="reset" title="Reset paper" aria-label="Reset paper">↺</button></div><div class="stage-bottom"><span>↔ Drag to orbit <b>·</b> Scroll to zoom</span><span id="sheet-size">210 × 297 mm <b>·</b> A4</span></div></section>
 <aside><div class="panel-heading"><p class="eyebrow">FOLDING SEQUENCE</p><span id="pattern-number">01 / 03</span></div><h2>Give paper a little shape.</h2><label class="field-label" for="pattern">Fold pattern</label><select id="pattern">${Object.entries(
   patterns,
 )
-  .map(([id, p]) => `<option value="${id}">${p.name}</option>`)
+  .map(
+    ([id, p]) =>
+      `<option value="${id}" ${id === "letter" ? "selected" : ""}>${p.name}</option>`,
+  )
   .join(
     "",
-  )}</select><p id="pattern-description" class="small-text">Two inward folds. A familiar home for a handwritten letter.</p><div id="steps" class="steps"></div><div class="divider"></div><div class="label-row"><label for="thickness">Paper thickness</label><span id="thickness-value">0.12 mm</span></div><input id="thickness" type="range" min="6" max="80" value="12"/><div class="range-labels"><span>0.06 mm</span><span id="thickness-max">0.80 mm</span></div><div class="imperfection-control"><div class="label-row"><label for="imperfection">Fold imperfection</label><span id="imperfection-value">Off</span></div><input id="imperfection" type="range" min="0" max="200" value="0"/><div class="range-labels"><span>Precise</span><span>Crooked · ±2.0°</span></div><button id="reroll" class="reroll" disabled>↻ New variation</button><p class="small-text">A different slight tilt for each crease. Stays the same as you unfold and replay.</p></div><div class="artwork-import"><p class="field-label">Front design</p><div class="artwork-actions"><button id="import-svg">Import front SVG</button><button id="example-svg">Try SVG design</button></div><input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="svg-status" class="small-text" role="status">Add a design that folds with the paper. SVG · up to 2 MB.</p><button id="reset-artwork" class="reroll" hidden>Restore sample letter</button></div><div class="artwork-import"><p class="field-label">Back design</p><div class="artwork-actions"><button id="import-back-svg">Import back SVG</button><button id="example-back-svg">Try back design</button></div><input id="back-svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="back-svg-status" class="small-text" role="status">Blank reverse side. SVG · up to 2 MB.</p><button id="reset-back-artwork" class="reroll" hidden>Clear back design</button></div><div class="toggles"><label><span>Letter artwork</span><input id="artwork" type="checkbox" checked/><span class="switch"></span></label><label><span>Crease guides</span><input id="creases" type="checkbox" checked/><span class="switch"></span></label><label><span>Black borders</span><input id="borders" type="checkbox"/><span class="switch"></span></label><div id="border-options"><div class="label-row"><label for="border-width">Border width</label><span id="border-width-value">2 px</span></div><input id="border-width" type="range" min="0.5" max="8" step="0.5" value="2"/></div><div class="label-row"><label for="lighting-contrast">Lighting contrast</label><span id="lighting-contrast-value">45%</span></div><input id="lighting-contrast" type="range" min="0" max="100" value="45"/><div class="label-row"><label for="shadow-softness">Shadow softness</label><span id="shadow-softness-value">70%</span></div><input id="shadow-softness" type="range" min="0" max="100" value="70"/><label><span>Simulation mesh</span><input id="mesh" type="checkbox"/><span class="switch"></span></label></div><div class="camera-editor"><p class="field-label">Camera per fold</p><label for="camera-step">View to edit</label><select id="camera-step"></select><div class="toggles"><label><span>Follow saved views</span><input id="camera-follow" type="checkbox"/><span class="switch"></span></label></div><p class="small-text">Angles are relative to the original sheet. Save an opening view and a view after each fold.</p><div id="camera-fields"></div><button id="camera-capture" class="reroll">Save current view here</button><p class="small-text">Turn following off to orbit freely, then save your view.</p><p id="camera-status" class="small-text" role="status"></p></div><div class="artwork-import"><p class="field-label">Export schematic SVG</p><p class="small-text">Standalone vector shapes, outlines and crease guides. Artwork and soft shadows are omitted.</p><label for="export-steps" class="field-label">Series frames</label><select id="export-steps"><option value="2">Open + halfway + end of every fold</option><option value="1">Open + end of every fold</option></select><div class="artwork-actions"><button id="export-current">Export current SVG</button><button id="export-series">Export series ZIP</button></div><p id="export-status" class="small-text" role="status">Uses your camera view, borders and guides. Transparent background.</p><img id="export-preview" alt="Latest exported schematic SVG" hidden style="width:100%;background:#f1efe7;border-radius:6px"/></div><div class="physics-note"><span>↳</span><p>Folded in order, with room for every layer.<br><strong>Finite thickness · rounded creases</strong></p></div></aside>
+  )}</select><p id="pattern-description" class="small-text">Two inward folds. A familiar home for a handwritten letter.</p><div id="steps" class="steps"></div><div class="divider"></div><div class="label-row"><label for="thickness">Paper thickness</label><span id="thickness-value">0.12 mm</span></div><input id="thickness" type="range" min="6" max="80" value="12"/><div class="range-labels"><span>0.06 mm</span><span id="thickness-max">0.80 mm</span></div><div class="imperfection-control"><div class="label-row"><label for="imperfection">Fold imperfection</label><span id="imperfection-value">Off</span></div><input id="imperfection" type="range" min="0" max="200" value="0"/><div class="range-labels"><span>Precise</span><span>Crooked · ±2.0°</span></div><button id="reroll" class="reroll" disabled>↻ New variation</button><p class="small-text">A different slight tilt for each crease. Stays the same as you unfold and replay.</p></div><div class="artwork-import"><p class="field-label">Front design</p><div class="artwork-actions"><button id="import-svg">Import front SVG</button><button id="example-svg">Try SVG design</button></div><input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="svg-status" class="small-text" role="status">Add a design that folds with the paper. SVG · up to 2 MB.</p><button id="reset-artwork" class="reroll" hidden>Restore sample letter</button></div><div class="artwork-import"><p class="field-label">Back design</p><div class="artwork-actions"><button id="import-back-svg">Import back SVG</button><button id="example-back-svg">Try back design</button></div><input id="back-svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="back-svg-status" class="small-text" role="status">Blank reverse side. SVG · up to 2 MB.</p><button id="reset-back-artwork" class="reroll" hidden>Clear back design</button></div><div class="toggles"><label><span>Letter artwork</span><input id="artwork" type="checkbox" checked/><span class="switch"></span></label><label><span>Crease guides</span><input id="creases" type="checkbox" checked/><span class="switch"></span></label><label><span>Black borders</span><input id="borders" type="checkbox"/><span class="switch"></span></label><div id="border-options"><div class="label-row"><label for="border-width">Border width</label><span id="border-width-value">2 px</span></div><input id="border-width" type="range" min="0.5" max="8" step="0.5" value="2"/></div><div class="label-row"><label for="lighting-contrast">Lighting contrast</label><span id="lighting-contrast-value">45%</span></div><input id="lighting-contrast" type="range" min="0" max="100" value="45"/><div class="label-row"><label for="shadow-softness">Shadow softness</label><span id="shadow-softness-value">70%</span></div><input id="shadow-softness" type="range" min="0" max="100" value="70"/><label><span>Wax seal on closed letter</span><input id="wax-seal" type="checkbox"/><span class="switch"></span></label><label><span>Simulation mesh</span><input id="mesh" type="checkbox"/><span class="switch"></span></label></div><div class="camera-editor"><p class="field-label">Camera per fold</p><label for="camera-step">View to edit</label><select id="camera-step"></select><div class="toggles"><label><span>Follow saved views</span><input id="camera-follow" type="checkbox"/><span class="switch"></span></label></div><p class="small-text">Angles are relative to the original sheet. Save an opening view and a view after each fold.</p><div id="camera-fields"></div><button id="camera-capture" class="reroll">Save current view here</button><p class="small-text">Turn following off to orbit freely, then save your view.</p><p id="camera-status" class="small-text" role="status"></p></div><div class="artwork-import"><p class="field-label">Export schematic SVG</p><p class="small-text">Standalone vector shapes, outlines and crease guides. Artwork and soft shadows are omitted.</p><label for="export-steps" class="field-label">Series frames</label><select id="export-steps"><option value="2">Open + halfway + end of every fold</option><option value="1">Open + end of every fold</option></select><div class="artwork-actions"><button id="export-current">Export current SVG</button><button id="export-series">Export series ZIP</button></div><p id="export-status" class="small-text" role="status">Uses your camera view, borders and guides. Transparent background.</p><img id="export-preview" alt="Latest exported schematic SVG" hidden style="width:100%;background:#f1efe7;border-radius:6px"/></div><div class="artwork-import"><p class="field-label">Export animation</p><p class="small-text">WebM video with artwork, lighting and camera views. Solid cream background. Up to 1280 px · 30 fps target.</p><label for="video-motion">Motion</label><select id="video-motion"><option value="fold">Fold once</option><option value="loop">Fold and unfold loop</option></select><label for="video-speed">Seconds per fold</label><select id="video-speed"><option value="1">1 second</option><option value="2">2 seconds</option><option value="4" selected>4 seconds</option><option value="6">6 seconds</option></select><div class="artwork-actions"><button id="export-video">Export WebM</button><button id="cancel-video" hidden>Cancel export</button></div><p id="video-status" class="small-text" role="status">Records in real time. Keep this tab visible.</p><video id="video-preview" controls loop muted playsinline hidden style="width:100%;border-radius:6px"></video></div><div class="physics-note"><span>↳</span><p>Folded in order, with room for every layer.<br><strong>Finite thickness · rounded creases</strong></p></div></aside>
 </div><section class="transport"><button id="play" class="play" aria-label="Play folding animation">▶ <span>Fold the letter</span></button><button id="reverse" class="reverse" title="Reverse direction" aria-label="Reverse animation direction">⇄</button><div class="timeline"><div class="label-row"><label for="progress">FOLD PROGRESS</label><output id="progress-value">0%</output></div><input id="progress" type="range" min="0" max="1000" value="0"/><div class="range-labels"><span>Unfolded</span><span>Folded</span></div></div><span class="duration">SLOW DOWN.<br>WATCH IT TAKE SHAPE.</span></section><footer><span>A digital study of a very physical thing.</span><span>LAYER-AWARE FOLDS <b>·</b> <span id="layer-info">0.12 mm paper</span> <b>·</b> 180° CLOSURE</span></footer></main>`;
 const get = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -47,10 +51,14 @@ function updateControls() {
     playing ? "Pause folding animation" : "Play folding animation",
   );
   get("pattern-number").textContent =
-    `0${Object.keys(patterns).indexOf(sim.pattern) + 1} / 06`;
+    `0${Object.keys(patterns).indexOf(sim.pattern) + 1} / ${Object.keys(patterns).length.toString().padStart(2, "0")}`;
   get("reverse").classList.toggle("selected", direction === -1);
   const count = patterns[sim.pattern].steps.length;
   get("pattern-description").textContent = patterns[sim.pattern].description;
+  get("sheet-size").textContent =
+    sim.pattern === "lenz-1776"
+      ? "Photo proportions · physical size unknown"
+      : `${Math.round(sim.width * 1000)} × ${Math.round(sim.height * 1000)} mm`;
   get<HTMLInputElement>("thickness").max = String(
     Math.round(sim.maxThickness * 100000),
   );
@@ -66,7 +74,7 @@ function updateControls() {
   get("steps").innerHTML = Array.from({ length: count }, (_, i) => {
     const completed = sim.progress >= (i + 1) / count,
       active = sim.progress >= i / count;
-    return `<div class="step ${active ? "active" : ""}"><span class="step-number">${completed ? "✓" : `0${i + 1}`}</span><div><strong>${patterns[sim.pattern].steps[i]}</strong><small>${i === 1 && sim.pattern === "accordion" ? "Mountain" : "Valley"} fold · 180°</small></div><span class="step-mark">${completed ? "✓" : "↶"}</span></div>`;
+    return `<div class="step ${active ? "active" : ""}"><span class="step-number">${completed ? "✓" : `0${i + 1}`}</span><div><strong>${patterns[sim.pattern].steps[i]}</strong><small>${sim.pattern === "lenz-1776" || (i === 1 && sim.pattern === "accordion") ? "Mountain" : "Valley"} fold · 180°</small></div><span class="step-mark">${completed ? "✓" : "↶"}</span></div>`;
   }).join("");
 }
 play.onclick = () => {
@@ -99,13 +107,28 @@ get<HTMLSelectElement>("pattern").onchange = (event) => {
   playing = false;
   direction = 1;
   get("reverse").classList.remove("selected");
-  sim.reset((event.target as HTMLSelectElement).value as Pattern);
+  const next = (event.target as HTMLSelectElement).value as Pattern;
+  get<HTMLInputElement>("wax-seal").checked = next === "lenz-1776";
+  const changeFormat = next === "lenz-1776" || sim.pattern === "lenz-1776";
+  sim.reset(next);
+  if (changeFormat)
+    sim.setSize(
+      next === "lenz-1776" ? 0.297 : 0.21,
+      next === "lenz-1776" ? 0.2475 : 0.297,
+    );
+  if (next === "lenz-1776") {
+    sim.setImperfection(0);
+    get<HTMLInputElement>("imperfection").value = "0";
+    updateImperfection();
+    get<HTMLInputElement>("camera-follow").checked = true;
+  }
   get("pattern-description").textContent =
     sim.pattern === "letter"
       ? "Two inward folds. A familiar home for a handwritten letter."
       : sim.pattern === "half"
         ? "One crease, two halves. The simplest place to begin."
         : "Two opposing folds. A small study in peaks and valleys.";
+  view.setSeal(get<HTMLInputElement>("wax-seal").checked);
   setupCameraEditor();
   updateControls();
 };
@@ -207,6 +230,8 @@ get<HTMLInputElement>("shadow-softness").oninput = (e) => {
   view.setShadowSoftness(value / 100);
   get("shadow-softness-value").textContent = `${value}%`;
 };
+get<HTMLInputElement>("wax-seal").onchange = () =>
+  view.setSeal(get<HTMLInputElement>("wax-seal").checked);
 get<HTMLInputElement>("mesh").onchange = (e) =>
   view.setWireframe((e.target as HTMLInputElement).checked);
 get("home").onclick = () => {
@@ -270,9 +295,9 @@ function setupCameraEditor() {
       sim.pattern,
       Array.from({ length: patterns[sim.pattern].steps.length + 1 }, () => ({
         azimuth: 39,
-        elevation: 51,
+        elevation: sim.pattern === "lenz-1776" ? -55 : 51,
         distance: 1.7,
-        roll: 0,
+        roll: sim.pattern === "lenz-1776" ? 180 : 0,
       })),
     );
   get("camera-step").innerHTML = [
@@ -385,6 +410,7 @@ get("export-series").onclick = async () => {
       borders: get<HTMLInputElement>("borders").checked,
       borderWidth: Number(get<HTMLInputElement>("border-width").value),
     });
+    exporter.setSeal(get<HTMLInputElement>("wax-seal").checked);
     exporter.setCreases(get<HTMLInputElement>("creases").checked);
     exporter.setCameraSequence(poses);
     const files: { name: string; content: string }[] = [];
@@ -436,9 +462,89 @@ get("export-series").onclick = async () => {
     currentButton.disabled = false;
   }
 };
+let recording = false;
+let videoPreviewUrl = "";
+get("export-video").onclick = async () => {
+  playing = false;
+  updateControls();
+  const progress = sim.progress;
+  const cameraPosition = view.camera.position.clone();
+  const cameraQuaternion = view.camera.quaternion.clone();
+  const cameraTarget = view.controls.target.clone();
+  const controlsEnabled = view.controls.enabled;
+  const disabled = Array.from(
+    root.querySelectorAll<
+      HTMLInputElement | HTMLButtonElement | HTMLSelectElement
+    >("input, button, select"),
+  ).map((element) => ({ element, disabled: element.disabled }));
+  disabled.forEach(({ element }) => {
+    element.disabled = true;
+  });
+  const cancel = get<HTMLButtonElement>("cancel-video");
+  const controller = new AbortController();
+  cancel.hidden = false;
+  cancel.disabled = false;
+  cancel.onclick = () => controller.abort();
+  recording = true;
+  view.controls.enabled = false;
+  try {
+    const blob = await recordWebm({
+      source: view.renderer.domElement,
+      foldSeconds:
+        Number(get<HTMLSelectElement>("video-speed").value) *
+        patterns[sim.pattern].steps.length,
+      loop: get<HTMLSelectElement>("video-motion").value === "loop",
+      signal: controller.signal,
+      render: (value) => {
+        sim.setProgress(value);
+        view.setCameraProgress(value);
+        view.update();
+      },
+      onProgress: (value) => {
+        get("video-status").textContent =
+          `Recording WebM · ${Math.round(value * 100)}%`;
+      },
+    });
+    downloadExport(blob, `${sim.pattern}-animation.webm`);
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    videoPreviewUrl = URL.createObjectURL(blob);
+    const preview = get<HTMLVideoElement>("video-preview");
+    preview.src = videoPreviewUrl;
+    preview.hidden = false;
+    get("video-status").textContent =
+      `WebM exported · ${(blob.size / 1024 / 1024).toFixed(2)} MB. Embed with a standard video element.`;
+  } catch (error) {
+    get("video-status").textContent =
+      error instanceof Error ? error.message : "Video export failed.";
+  } finally {
+    recording = false;
+    sim.setProgress(progress);
+    view.setCameraProgress(progress);
+    view.camera.position.copy(cameraPosition);
+    view.camera.quaternion.copy(cameraQuaternion);
+    view.controls.target.copy(cameraTarget);
+    view.controls.enabled = controlsEnabled;
+    view.update();
+    disabled.forEach(({ element, disabled }) => {
+      element.disabled = disabled;
+    });
+    cancel.hidden = true;
+    updateControls();
+    last = 0;
+  }
+};
+if (!webmMimeType()) {
+  get<HTMLButtonElement>("export-video").disabled = true;
+  get("video-status").textContent =
+    "WebM recording is unavailable in this browser. Try Chrome or Firefox.";
+}
 setupCameraEditor();
 updateControls();
 function animate(now: number) {
+  if (recording) {
+    requestAnimationFrame(animate);
+    return;
+  }
   accumulator += Math.min((now - (last || now)) / 1000, 0.05);
   last = now;
   while (accumulator >= 1 / 60) {

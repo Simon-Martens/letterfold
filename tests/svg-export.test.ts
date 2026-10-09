@@ -74,3 +74,27 @@ test("ZIP stores named SVGs and includes a central directory", async () => {
   assert.equal(data.getUint16(bytes.length - 12, true), 1);
   assert.match(new TextDecoder().decode(bytes), /01.svg/);
 });
+
+test("diagonal strokes retain subpixel vector endpoints instead of pixel outlines", () => {
+  const svg = exportSchematicSvg(
+    [],
+    [{ positions: [-0.7, -0.3, 0, 0.65, 0.45, 0], width: 2 }],
+    camera,
+    { width: 128, height: 128 },
+  );
+  assert.match(svg, /fill="none" stroke=/);
+  assert.match(svg, /stroke-linecap="round"/);
+  assert.match(svg, /M19\.200 83\.200L105\.600 35\.200/);
+});
+test("a partly covered stroke is clipped into exactly two straight visible spans", () => {
+  const svg = exportSchematicSvg(
+    [surface(0.5)],
+    [{ positions: [-0.9, 0, 0, 0.9, 0, 0], width: 2 }],
+    camera,
+    { width: 128, height: 128 },
+  );
+  const stroke = svg.match(/fill="none"[^>]* d="([^"]+)"/)![1];
+  assert.equal((stroke.match(/M/g) ?? []).length, 2);
+  assert.match(stroke, /M6\.400 64\.000L38\.400 64\.000/);
+  assert.match(stroke, /M89\.600 64\.000L121\.600 64\.000/);
+});

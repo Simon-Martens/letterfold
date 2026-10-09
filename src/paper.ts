@@ -15,6 +15,7 @@ export interface PaperOptions {
 
 /** Data contract shared by the folding library and its optional renderer. */
 export interface PaperMesh {
+  readonly progress?: number;
   readonly width: number;
   readonly height: number;
   readonly nx: number;
@@ -46,8 +47,14 @@ const smooth = (v: number) => {
  * This is a constrained geometric model, not a general contact/force solver.
  */
 export class LetterPaper implements PaperMesh {
-  readonly width: number;
-  readonly height: number;
+  private _width: number;
+  private _height: number;
+  get width() {
+    return this._width;
+  }
+  get height() {
+    return this._height;
+  }
   nx = 12;
   private _thickness: number;
   private _pattern: Pattern;
@@ -138,8 +145,10 @@ export class LetterPaper implements PaperMesh {
   stateVersion = 0;
 
   constructor(options: PaperOptions = {}) {
-    this.width = options.width ?? 0.21;
-    this.height = options.height ?? 0.297;
+    this._width =
+      options.width ?? (options.pattern === "lenz-1776" ? 0.297 : 0.21);
+    this._height =
+      options.height ?? (options.pattern === "lenz-1776" ? 0.2475 : 0.297);
     if (
       !Number.isFinite(this.width) ||
       this.width <= 0 ||
@@ -165,6 +174,15 @@ export class LetterPaper implements PaperMesh {
   private validatePattern(value: Pattern) {
     if (!Object.hasOwn(patterns, value))
       throw new Error("Unsupported fold pattern.");
+  }
+  /** Resize the sheet without changing artwork UV coordinates or the current progress. */
+  setSize(width: number, height: number) {
+    if (![width, height].every((n) => Number.isFinite(n) && n > 0))
+      throw new Error("Paper dimensions must be finite and positive.");
+    this._width = width;
+    this._height = height;
+    this._thickness = Math.min(this._thickness, this.maxThickness);
+    this.rebuild();
   }
   setThickness(value: number) {
     this.validateThickness(value);
@@ -196,7 +214,7 @@ export class LetterPaper implements PaperMesh {
     this.creaseSegments = new Float64Array(0);
     this.creaseSegmentNormals = new Float64Array(0);
     this.guideWeights = [];
-    if (this.imperfection > 0) {
+    if (this.imperfection > 0 || this.pattern === "lenz-1776") {
       this.rebuildImperfect();
       return;
     }
@@ -248,7 +266,7 @@ export class LetterPaper implements PaperMesh {
     this.stateVersion++;
     this.positions.set(this.rest);
     this.normals.fill(0);
-    if (this.imperfection > 0) {
+    if (this.imperfection > 0 || this.pattern === "lenz-1776") {
       this.evaluateImperfect();
       return;
     }
@@ -411,6 +429,25 @@ export class LetterPaper implements PaperMesh {
   /** Local crease frames, applied to the entire packet in sequence. */
   private imperfectFolds() {
     const angles = this.foldAngles;
+    if (this.pattern === "lenz-1776") {
+      // Positions estimated from the photographed sheet, not archival measurements.
+      const frames = [
+        { cx: -0.3 * this.width, cy: 0, nx: -1, ny: 0 },
+        { cx: 0.22 * this.width, cy: 0, nx: 1, ny: 0 },
+        { cx: -0.04 * this.width, cy: 0.12 * this.height, nx: 0, ny: 1 },
+        { cx: -0.04 * this.width, cy: -0.29 * this.height, nx: 0, ny: -1 },
+      ];
+      return frames.map((f, i) => {
+        const a = (angles[i] * Math.PI) / 180;
+        return {
+          ...f,
+          nx: f.nx * Math.cos(a) - f.ny * Math.sin(a),
+          ny: f.nx * Math.sin(a) + f.ny * Math.cos(a),
+          radius: [0.5, 1.5, 3.5, 7.5][i] * this.layerSpacing,
+          direction: -1,
+        };
+      });
+    }
     if (this.pattern in packetAxes) {
       const low = [-this.width / 2, -this.height / 2],
         high = [this.width / 2, this.height / 2];

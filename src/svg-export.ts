@@ -7,6 +7,7 @@ export interface SchematicSvgOptions {
   title?: string;
 }
 export interface SvgSurface {
+  color?: string;
   geometry: THREE.BufferGeometry;
   side: "front" | "back" | "both";
 }
@@ -59,6 +60,7 @@ export function exportSchematicSvg(
   );
   const depth = new Float64Array(width * height).fill(Infinity);
   const pixels = new Uint8Array(width * height);
+  const palette = [...colors];
   const light = new THREE.Vector3(-0.3, 0.5, 0.8).normalize();
   type Point = [number, number, number];
   const screen = (p: THREE.Vector4): Point => [
@@ -68,9 +70,30 @@ export function exportSchematicSvg(
   ];
   const cross = (a: Point, b: Point, x: number, y: number) =>
     (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+  // Store projected faces in a coarse spatial index for exact line occlusion.
+  const triangles: { a: Point; b: Point; c: Point; area: number }[] = [];
+  const bins = new Map<string, number[]>();
+  const cell = 32;
   const raster = (a: Point, b: Point, c: Point, color: number) => {
     const area = cross(a, b, c[0], c[1]);
     if (Math.abs(area) < 1e-10) return;
+    const triangleId = triangles.length;
+    triangles.push({ a, b, c, area });
+    for (
+      let y = Math.floor(Math.min(a[1], b[1], c[1]) / cell);
+      y <= Math.floor(Math.max(a[1], b[1], c[1]) / cell);
+      y++
+    )
+      for (
+        let x = Math.floor(Math.min(a[0], b[0], c[0]) / cell);
+        x <= Math.floor(Math.max(a[0], b[0], c[0]) / cell);
+        x++
+      ) {
+        const key = `${x},${y}`,
+          list = bins.get(key);
+        if (list) list.push(triangleId);
+        else bins.set(key, [triangleId]);
+      }
     const minX = Math.max(0, Math.floor(Math.min(a[0], b[0], c[0]))),
       maxX = Math.min(width - 1, Math.ceil(Math.max(a[0], b[0], c[0])));
     const minY = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1]))),
@@ -114,7 +137,10 @@ export function exportSchematicSvg(
     }
     return polygon;
   };
-  for (const { geometry, side } of surfaces) {
+  for (const { geometry, side, color } of surfaces) {
+    if (color && !/^#[0-9a-fA-F]{6}$/.test(color))
+      throw new Error("Surface color must be a six-digit hex color.");
+    if (color && !palette.includes(color)) palette.push(color);
     const position = geometry.getAttribute("position"),
       index = geometry.index;
     const projected: THREE.Vector4[] = [],
@@ -150,11 +176,13 @@ export function exportSchematicSvg(
           screen(polygon[0]),
           screen(polygon[j]),
           screen(polygon[j + 1]),
-          shade,
+          color ? palette.indexOf(color) + 1 : shade,
         );
     }
   }
-  for (const stroke of strokes)
+  const vectorStrokes: string[] = [];
+  for (const stroke of strokes) {
+    const segments: string[] = [];
     for (let i = 0; i + 5 < stroke.positions.length; i += 6) {
       let a = new THREE.Vector4(
         ...(stroke.positions.slice(i, i + 3) as [number, number, number]),
@@ -182,39 +210,84 @@ export function exportSchematicSvg(
       const p = screen(a),
         q = screen(b),
         dx = q[0] - p[0],
-        dy = q[1] - p[1],
-        len = dx * dx + dy * dy,
-        r = Math.max(0.5, stroke.width / 2);
+        dy = q[1] - p[1];
+      const candidates = new Set<number>();
       for (
-        let y = Math.max(0, Math.floor(Math.min(p[1], q[1]) - r));
-        y <= Math.min(height - 1, Math.ceil(Math.max(p[1], q[1]) + r));
+        let y = Math.floor(Math.min(p[1], q[1]) / cell);
+        y <= Math.floor(Math.max(p[1], q[1]) / cell);
         y++
       )
         for (
-          let x = Math.max(0, Math.floor(Math.min(p[0], q[0]) - r));
-          x <= Math.min(width - 1, Math.ceil(Math.max(p[0], q[0]) + r));
+          let x = Math.floor(Math.min(p[0], q[0]) / cell);
+          x <= Math.floor(Math.max(p[0], q[0]) / cell);
           x++
-        ) {
-          const t = len
-            ? Math.max(
-                0,
-                Math.min(
-                  1,
-                  ((x + 0.5 - p[0]) * dx + (y + 0.5 - p[1]) * dy) / len,
-                ),
-              )
-            : 0;
-          if (Math.hypot(x + 0.5 - p[0] - t * dx, y + 0.5 - p[1] - t * dy) > r)
-            continue;
-          const z = p[2] + t * (q[2] - p[2]),
-            id = y * width + x;
-          if (z <= depth[id] + 1e-7) pixels[id] = stroke.guide ? 8 : 7;
+        )
+          for (const id of bins.get(`${x},${y}`) ?? []) candidates.add(id);
+      const hidden: [number, number][] = [];
+      for (const id of candidates) {
+        const face = triangles[id];
+        let lo = 0,
+          hi = 1;
+        // Clip the centerline against each projected triangle without quantizing it.
+        for (const [v, w] of [
+          [face.a, face.b],
+          [face.b, face.c],
+          [face.c, face.a],
+        ]) {
+          const start = cross(v, w, p[0], p[1]) / face.area;
+          const end = cross(v, w, q[0], q[1]) / face.area;
+          if (start < 0 && end < 0) {
+            hi = -1;
+            break;
+          }
+          if (start < 0) lo = Math.max(lo, start / (start - end));
+          else if (end < 0) hi = Math.min(hi, start / (start - end));
         }
+        if (hi <= lo) continue;
+        const behind = (t: number) => {
+          const x = p[0] + t * dx,
+            y = p[1] + t * dy;
+          const u = cross(face.b, face.c, x, y) / face.area,
+            v = cross(face.c, face.a, x, y) / face.area;
+          const faceZ = u * face.a[2] + v * face.b[2] + (1 - u - v) * face.c[2];
+          return p[2] + t * (q[2] - p[2]) - faceZ - 1e-7;
+        };
+        const start = behind(lo),
+          end = behind(hi);
+        if (start <= 0 && end <= 0) continue;
+        if (start <= 0) lo = lo + ((hi - lo) * start) / (start - end);
+        else if (end <= 0) hi = lo + ((hi - lo) * start) / (start - end);
+        if (hi > lo) hidden.push([lo, hi]);
+      }
+      hidden.sort((a, b) => a[0] - b[0]);
+      const emit = (lo: number, hi: number) => {
+        if ((hi - lo) * Math.hypot(dx, dy) < 1e-5) return;
+        const point = (t: number) =>
+          `${(p[0] + t * dx).toFixed(3)} ${(p[1] + t * dy).toFixed(3)}`;
+        segments.push(`M${point(lo)}L${point(hi)}`);
+      };
+      let cursor = 0;
+      for (const [lo, hi] of hidden) {
+        if (lo > cursor) emit(cursor, lo);
+        cursor = Math.max(cursor, hi);
+      }
+      if (cursor < 1) emit(cursor, 1);
     }
-  return traceSvg(pixels, width, height, options.title ?? "Folded letter");
+    if (segments.length)
+      vectorStrokes.push(
+        `<path fill="none" stroke="${stroke.guide ? colors[7] : colors[6]}" stroke-width="${stroke.width.toFixed(3)}" stroke-linecap="round" stroke-linejoin="round" d="${segments.join("")}"/>`,
+      );
+  }
+  return traceSvg(
+    pixels,
+    width,
+    height,
+    options.title ?? "Folded letter",
+    palette,
+  ).replace("</svg>", vectorStrokes.join("") + "</svg>");
 }
 
-function simplify(points: number[][], tolerance = 0.65): number[][] {
+function simplify(points: number[][], tolerance = 1): number[][] {
   if (points.length <= 3) return points;
   const keep = new Set([0, points.length - 1]),
     stack = [[0, points.length - 1]];
@@ -250,9 +323,10 @@ function traceSvg(
   width: number,
   height: number,
   title: string,
+  palette: string[],
 ) {
   const paths: string[] = [];
-  for (let color = 1; color <= 8; color++) {
+  for (let color = 1; color <= palette.length; color++) {
     const edges = new Map<number, number[]>(),
       stride = width + 1;
     const edge = (a: number, b: number) => {
@@ -297,7 +371,7 @@ function traceSvg(
     }
     if (contours.length)
       paths.push(
-        `<path fill="${colors[color - 1]}" fill-rule="evenodd" d="${contours.join("")}"/>`,
+        `<path fill="${palette[color - 1]}" fill-rule="evenodd" d="${contours.join("")}"/>`,
       );
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img"><title>${escapeXml(title)}</title>${paths.join("")}</svg>`;

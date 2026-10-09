@@ -1,6 +1,23 @@
 export type Pattern =
-  "letter" | "half" | "accordion" | "cross" | "double-cross" | "fivefold";
+  | "letter"
+  | "half"
+  | "accordion"
+  | "cross"
+  | "double-cross"
+  | "fivefold"
+  | "lenz-1776";
 export const patterns = {
+  "lenz-1776": {
+    name: "Lenz wrapper · 1776 reconstruction",
+    description:
+      "Photo-based estimate: side creases at 20% / 72%; horizontal creases at 38% / 79%. Proposed order, folded behind the address panel. Long upper flap first; short lower flap closes on top. Tears are not modeled.",
+    steps: [
+      "Fold left margin behind",
+      "Fold right margin behind",
+      "Fold long upper flap behind",
+      "Close short lower flap on top",
+    ],
+  },
   letter: {
     name: "The letter fold",
     description: "Two inward folds. The second flap closes over the first.",

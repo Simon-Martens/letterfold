@@ -286,3 +286,31 @@ test("a tilted half fold resolves the bend instead of bridging opposite normals"
       }
   }
 });
+
+test("Lenz wrapper reconstructs the measured panel proportions and reverses", () => {
+  const p = createPaper({ pattern: "lenz-1776" });
+  assert.ok(Math.abs(p.width / p.height - 1.2) < 1e-12);
+  assert.equal(p.foldAngles.length, 4);
+  for (const progress of [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]) {
+    p.setProgress(progress);
+    assert.ok(p.positions.every(Number.isFinite));
+    assert.ok(p.normals.every(Number.isFinite));
+  }
+  const xs = Array.from(p.positions).filter((_, i) => i % 3 === 0);
+  const ys = Array.from(p.positions).filter((_, i) => i % 3 === 1);
+  assert.ok(
+    Math.abs((Math.max(...xs) - Math.min(...xs)) / p.width - 0.52) < 0.02,
+  );
+  assert.ok(
+    Math.abs((Math.max(...ys) - Math.min(...ys)) / p.height - 0.41) < 0.02,
+  );
+  assert.ok(
+    Math.max(...Array.from(p.positions).filter((_, i) => i % 3 === 2)) < 1e-10,
+  );
+  p.setProgress(0);
+  assert.deepEqual(p.positions, p.rest);
+  p.setSize(0.24, 0.2);
+  assert.equal(p.width, 0.24);
+  assert.throws(() => p.setSize(-1, 0.2));
+  assert.equal(p.width, 0.24);
+});

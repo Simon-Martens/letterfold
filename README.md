@@ -190,4 +190,30 @@ const svg = viewer.exportSvg({ width: 1000, title: "Fold 1" });
 // at each desired progress value. Save each returned string as an .svg file.
 ```
 
-By default the export matches the viewer's aspect ratio. An optional `height` overrides it; dimensions must be integers from 64 to 2048. Visibility is resolved in a software depth buffer and the resulting color regions are traced into simplified vector paths. This prevents covered edges from showing through without relying on triangle painter order. The visibility sampling defaults to 1000 pixels wide; the result scales as vectors, but details below that sampling resolution can disappear and the traced contours are an approximation, not exact CAD geometry. Use a higher width when tiny details matter. `exportSchematicSvg` is also available from `letterfold/three` for offline use with supplied geometries and a camera.
+By default the export matches the viewer's aspect ratio. An optional `height` overrides it; dimensions must be integers from 64 to 2048. Paper-fill visibility is resolved in a software depth buffer and the resulting color regions are traced into simplified vector paths. Borders and crease guides are projected directly into SVG strokes with subpixel coordinates and round caps; their hidden portions are clipped analytically against projected triangles, rather than traced from pixels. This prevents covered edges from showing through without relying on triangle painter order. The visibility sampling defaults to 1000 pixels wide; the result scales as vectors, but details below that sampling resolution can disappear and the traced contours are an approximation, not exact CAD geometry. Use a higher width when tiny details matter. `exportSchematicSvg` is also available from `letterfold/three` for offline use with supplied geometries and a camera.
+
+## Lenz wrapper reconstruction (1776)
+
+`createPaper({ pattern: "lenz-1776" })` adds a four-flap wrapper estimated from [the supplied photograph](https://dev.lenz-briefe.de/umschlag-lenz-an-weidmanns-erben-und-reich-1776-07-26-full.webp). Vertical creases are at 20% and 72% of sheet width from the left; horizontal creases at 38% and 79% of sheet height from the top. The remaining address panel is approximately 52% × 41% of the sheet. The rectangular sheet aspect is approximately 1.20. The default model scale is 297 × 247.5 mm **for visualization only**, not an archival measurement; pass explicit width/height if measured dimensions are available.
+
+Proposed sequence: left margin behind the address face, right margin behind, long upper flap behind, then short lower flap behind and on top of the long flap. Directions/order are interpretive, since the photograph alone cannot establish them. Fine wrinkles, tears, and the lower-edge notch are not modeled. An optional schematic wax seal bridges the closing seam; it is not a reproduction of the historical stamp. This is a schematic reconstruction of the four main crease locations, not an exact facsimile or proven historical folding sequence.
+
+Selecting this preset in the demo switches to the estimated sheet proportions and a rear camera view to make the closing flaps visible. The front is the address side. Camera views, imperfection, and SVG sequence exports work as for other presets. `paper.setSize(width, height)` adjusts model dimensions while retaining the progress and fold pattern.
+
+## Wax seals
+
+Enable **Wax seal on closed letter** to add a decorative red wax disk across the closing flap edge. It is enabled by default when selecting the Lenz reconstruction and appears only at 100% closure (disappearing when you unfold). The seal is shown in the 3D preview and the final SVG/series frame. It does not glue or constrain the simulated paper.
+
+Use `viewer.setSeal(true)` / `viewer.setSeal(false)`, or configure an anchor with `viewer.setSeal({u: 0.46, v: 0.01, radius: 0.045, side: "front"})`. `u` and `v` are coordinates on the original unfolded sheet (0–1, with v=0 at the bottom); radius is a fraction of the shorter sheet dimension. These defaults place the seal across the short lower flap's closing edge in the Lenz preset. Other patterns may require their own anchor and side. `PaperRendererOptions.seal` accepts the same values, and `PaperSealOptions` is exported from `letterfold/three`.
+
+## WebM animation export
+
+Choose **Export WebM** in the demo for a complete folding animation or a fold/unfold loop, at 1, 2, 4 or 6 seconds per fold. It includes both sides' artwork, borders, crease guides, lighting, saved camera motion and the closing seal. The editor is locked during recording, with a Cancel button, and restores your previous pose afterwards.
+
+The browser records in real time using MediaRecorder, targeting 30 fps with the longest dimension capped at 1280 pixels. Complex folds or slower devices can reduce frame rate. Keep the tab visible; hiding it cancels the export. The background is solid cream; transparency is not exported. WebM recording support is detected before enabling export. No encoding library is downloaded. `recordWebm` and `webmMimeType` are available from `letterfold/three` for custom integrations.
+
+Embed the downloaded file without loading letterfold or Three.js:
+
+```html
+<video src="letter-animation.webm" autoplay loop muted playsinline controls></video>
+```
