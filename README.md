@@ -177,3 +177,17 @@ const pose = viewer.captureCameraView();
 `PaperCameraView` and `sampleCameraSequence` are exported from `letterfold/three`. Sequences interpolate smoothly between evenly spaced fold endpoints, using the shortest angular path. Seeking and reversing reproduce the same camera pose. Setting an empty sequence disables following. Distances supported by the sequence API are 0.2–10 sheet diagonals.
 
 Use **Import front SVG** and **Import back SVG** in the demo. Each accepts a separate SVG up to 2 MB and has its own reset control. Concurrent loading and resets are tracked independently for each side.
+
+## Standalone schematic SVG exports
+
+Use **Export current SVG** for the current pose and camera, or **Export series ZIP** for an opening frame followed by each completed fold. The series selector can also include a halfway frame for each fold (the default). The ZIP contains numbered SVGs and a `sequence.json` manifest with progress values and camera views. When **Follow saved views** is enabled, the series samples those views; otherwise it holds your current viewing angle and distance while tracking the packet center. Export uses an independent paper model and does not change the live fold.
+
+These are schematic exports: simple neutral shading, visible outlines and optional crease guides on a transparent background. They honor border visibility/width and the guide toggle. Imported front/back artwork, mesh overlays, adjustable studio lighting, and soft shadows are omitted. Output contains only SVG paths and a title—no Three.js, JavaScript, external assets, fonts, or embedded raster images. Display with a normal `<img src="letter.svg">`.
+
+```ts
+const svg = viewer.exportSvg({ width: 1000, title: "Fold 1" });
+// For custom sequences, set paper and camera progress, then call exportSvg
+// at each desired progress value. Save each returned string as an .svg file.
+```
+
+By default the export matches the viewer's aspect ratio. An optional `height` overrides it; dimensions must be integers from 64 to 2048. Visibility is resolved in a software depth buffer and the resulting color regions are traced into simplified vector paths. This prevents covered edges from showing through without relying on triangle painter order. The visibility sampling defaults to 1000 pixels wide; the result scales as vectors, but details below that sampling resolution can disappear and the traced contours are an approximation, not exact CAD geometry. Use a higher width when tiny details matter. `exportSchematicSvg` is also available from `letterfold/three` for offline use with supplied geometries and a camera.

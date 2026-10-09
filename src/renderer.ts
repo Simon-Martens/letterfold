@@ -1,4 +1,9 @@
 import {
+  exportSchematicSvg,
+  type SchematicSvgOptions,
+  type SvgStroke,
+} from "./svg-export";
+import {
   sampleCameraSequence,
   validateCameraView,
   type PaperCameraView,
@@ -432,6 +437,52 @@ export class ThreePaperRenderer {
       this.backTexture = null;
     }
     this.setArtwork(this.artworkVisible);
+  }
+  /** Export this camera view as standalone schematic paths (no textures or shadows). */
+  exportSvg(options: SchematicSvgOptions = {}): string {
+    this.update();
+    const width = options.width ?? 1000;
+    const height =
+      options.height ??
+      Math.max(64, Math.min(2048, Math.round(width / this.camera.aspect)));
+    const strokes: SvgStroke[] = [];
+    for (const [line, guide] of [
+      [this.borders, false],
+      [this.creases, true],
+    ] as const) {
+      if (!line.visible) continue;
+      const starts = line.geometry.getAttribute("instanceStart"),
+        ends = line.geometry.getAttribute("instanceEnd");
+      if (!starts || !ends) continue;
+      const positions: number[] = [];
+      for (let i = 0; i < starts.count; i++)
+        positions.push(
+          starts.getX(i),
+          starts.getY(i),
+          starts.getZ(i),
+          ends.getX(i),
+          ends.getY(i),
+          ends.getZ(i),
+        );
+      strokes.push({
+        positions,
+        width: (line.material.linewidth * width) / this.element.clientWidth,
+        guide,
+      });
+    }
+    const camera = this.camera.clone();
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    return exportSchematicSvg(
+      [
+        { geometry: this.geometry, side: "front" },
+        { geometry: this.backGeometry, side: "back" },
+        { geometry: this.edgeGeometry, side: "both" },
+      ],
+      strokes,
+      camera,
+      { ...options, width, height },
+    );
   }
   setCreases(value: boolean) {
     this.creases.visible = value;

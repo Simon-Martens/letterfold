@@ -1,3 +1,4 @@
+import { svgZip } from "./zip";
 import { createPaper, type Pattern } from "./paper";
 import { ThreePaperRenderer, type PaperSide } from "./renderer";
 import "./style.css";
@@ -16,7 +17,7 @@ root.innerHTML = `
   .map(([id, p]) => `<option value="${id}">${p.name}</option>`)
   .join(
     "",
-  )}</select><p id="pattern-description" class="small-text">Two inward folds. A familiar home for a handwritten letter.</p><div id="steps" class="steps"></div><div class="divider"></div><div class="label-row"><label for="thickness">Paper thickness</label><span id="thickness-value">0.12 mm</span></div><input id="thickness" type="range" min="6" max="80" value="12"/><div class="range-labels"><span>0.06 mm</span><span id="thickness-max">0.80 mm</span></div><div class="imperfection-control"><div class="label-row"><label for="imperfection">Fold imperfection</label><span id="imperfection-value">Off</span></div><input id="imperfection" type="range" min="0" max="200" value="0"/><div class="range-labels"><span>Precise</span><span>Crooked · ±2.0°</span></div><button id="reroll" class="reroll" disabled>↻ New variation</button><p class="small-text">A different slight tilt for each crease. Stays the same as you unfold and replay.</p></div><div class="artwork-import"><p class="field-label">Front design</p><div class="artwork-actions"><button id="import-svg">Import front SVG</button><button id="example-svg">Try SVG design</button></div><input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="svg-status" class="small-text" role="status">Add a design that folds with the paper. SVG · up to 2 MB.</p><button id="reset-artwork" class="reroll" hidden>Restore sample letter</button></div><div class="artwork-import"><p class="field-label">Back design</p><div class="artwork-actions"><button id="import-back-svg">Import back SVG</button><button id="example-back-svg">Try back design</button></div><input id="back-svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="back-svg-status" class="small-text" role="status">Blank reverse side. SVG · up to 2 MB.</p><button id="reset-back-artwork" class="reroll" hidden>Clear back design</button></div><div class="toggles"><label><span>Letter artwork</span><input id="artwork" type="checkbox" checked/><span class="switch"></span></label><label><span>Crease guides</span><input id="creases" type="checkbox" checked/><span class="switch"></span></label><label><span>Black borders</span><input id="borders" type="checkbox"/><span class="switch"></span></label><div id="border-options"><div class="label-row"><label for="border-width">Border width</label><span id="border-width-value">2 px</span></div><input id="border-width" type="range" min="0.5" max="8" step="0.5" value="2"/></div><div class="label-row"><label for="lighting-contrast">Lighting contrast</label><span id="lighting-contrast-value">45%</span></div><input id="lighting-contrast" type="range" min="0" max="100" value="45"/><div class="label-row"><label for="shadow-softness">Shadow softness</label><span id="shadow-softness-value">70%</span></div><input id="shadow-softness" type="range" min="0" max="100" value="70"/><label><span>Simulation mesh</span><input id="mesh" type="checkbox"/><span class="switch"></span></label></div><div class="camera-editor"><p class="field-label">Camera per fold</p><label for="camera-step">View to edit</label><select id="camera-step"></select><div class="toggles"><label><span>Follow saved views</span><input id="camera-follow" type="checkbox"/><span class="switch"></span></label></div><p class="small-text">Angles are relative to the original sheet. Save an opening view and a view after each fold.</p><div id="camera-fields"></div><button id="camera-capture" class="reroll">Save current view here</button><p class="small-text">Turn following off to orbit freely, then save your view.</p><p id="camera-status" class="small-text" role="status"></p></div><div class="physics-note"><span>↳</span><p>Folded in order, with room for every layer.<br><strong>Finite thickness · rounded creases</strong></p></div></aside>
+  )}</select><p id="pattern-description" class="small-text">Two inward folds. A familiar home for a handwritten letter.</p><div id="steps" class="steps"></div><div class="divider"></div><div class="label-row"><label for="thickness">Paper thickness</label><span id="thickness-value">0.12 mm</span></div><input id="thickness" type="range" min="6" max="80" value="12"/><div class="range-labels"><span>0.06 mm</span><span id="thickness-max">0.80 mm</span></div><div class="imperfection-control"><div class="label-row"><label for="imperfection">Fold imperfection</label><span id="imperfection-value">Off</span></div><input id="imperfection" type="range" min="0" max="200" value="0"/><div class="range-labels"><span>Precise</span><span>Crooked · ±2.0°</span></div><button id="reroll" class="reroll" disabled>↻ New variation</button><p class="small-text">A different slight tilt for each crease. Stays the same as you unfold and replay.</p></div><div class="artwork-import"><p class="field-label">Front design</p><div class="artwork-actions"><button id="import-svg">Import front SVG</button><button id="example-svg">Try SVG design</button></div><input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="svg-status" class="small-text" role="status">Add a design that folds with the paper. SVG · up to 2 MB.</p><button id="reset-artwork" class="reroll" hidden>Restore sample letter</button></div><div class="artwork-import"><p class="field-label">Back design</p><div class="artwork-actions"><button id="import-back-svg">Import back SVG</button><button id="example-back-svg">Try back design</button></div><input id="back-svg-file" type="file" accept=".svg,image/svg+xml" hidden/><p id="back-svg-status" class="small-text" role="status">Blank reverse side. SVG · up to 2 MB.</p><button id="reset-back-artwork" class="reroll" hidden>Clear back design</button></div><div class="toggles"><label><span>Letter artwork</span><input id="artwork" type="checkbox" checked/><span class="switch"></span></label><label><span>Crease guides</span><input id="creases" type="checkbox" checked/><span class="switch"></span></label><label><span>Black borders</span><input id="borders" type="checkbox"/><span class="switch"></span></label><div id="border-options"><div class="label-row"><label for="border-width">Border width</label><span id="border-width-value">2 px</span></div><input id="border-width" type="range" min="0.5" max="8" step="0.5" value="2"/></div><div class="label-row"><label for="lighting-contrast">Lighting contrast</label><span id="lighting-contrast-value">45%</span></div><input id="lighting-contrast" type="range" min="0" max="100" value="45"/><div class="label-row"><label for="shadow-softness">Shadow softness</label><span id="shadow-softness-value">70%</span></div><input id="shadow-softness" type="range" min="0" max="100" value="70"/><label><span>Simulation mesh</span><input id="mesh" type="checkbox"/><span class="switch"></span></label></div><div class="camera-editor"><p class="field-label">Camera per fold</p><label for="camera-step">View to edit</label><select id="camera-step"></select><div class="toggles"><label><span>Follow saved views</span><input id="camera-follow" type="checkbox"/><span class="switch"></span></label></div><p class="small-text">Angles are relative to the original sheet. Save an opening view and a view after each fold.</p><div id="camera-fields"></div><button id="camera-capture" class="reroll">Save current view here</button><p class="small-text">Turn following off to orbit freely, then save your view.</p><p id="camera-status" class="small-text" role="status"></p></div><div class="artwork-import"><p class="field-label">Export schematic SVG</p><p class="small-text">Standalone vector shapes, outlines and crease guides. Artwork and soft shadows are omitted.</p><label for="export-steps" class="field-label">Series frames</label><select id="export-steps"><option value="2">Open + halfway + end of every fold</option><option value="1">Open + end of every fold</option></select><div class="artwork-actions"><button id="export-current">Export current SVG</button><button id="export-series">Export series ZIP</button></div><p id="export-status" class="small-text" role="status">Uses your camera view, borders and guides. Transparent background.</p><img id="export-preview" alt="Latest exported schematic SVG" hidden style="width:100%;background:#f1efe7;border-radius:6px"/></div><div class="physics-note"><span>↳</span><p>Folded in order, with room for every layer.<br><strong>Finite thickness · rounded creases</strong></p></div></aside>
 </div><section class="transport"><button id="play" class="play" aria-label="Play folding animation">▶ <span>Fold the letter</span></button><button id="reverse" class="reverse" title="Reverse direction" aria-label="Reverse animation direction">⇄</button><div class="timeline"><div class="label-row"><label for="progress">FOLD PROGRESS</label><output id="progress-value">0%</output></div><input id="progress" type="range" min="0" max="1000" value="0"/><div class="range-labels"><span>Unfolded</span><span>Folded</span></div></div><span class="duration">SLOW DOWN.<br>WATCH IT TAKE SHAPE.</span></section><footer><span>A digital study of a very physical thing.</span><span>LAYER-AWARE FOLDS <b>·</b> <span id="layer-info">0.12 mm paper</span> <b>·</b> 180° CLOSURE</span></footer></main>`;
 const get = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -315,6 +316,125 @@ get("camera-capture").onclick = () => {
   syncCameraFields();
   applyCameraViews();
   get("camera-status").textContent = "Current view saved for this fold.";
+};
+let exportPreviewUrl = "";
+function downloadExport(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob),
+    anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+function previewExport(svg: string) {
+  if (exportPreviewUrl) URL.revokeObjectURL(exportPreviewUrl);
+  exportPreviewUrl = URL.createObjectURL(
+    new Blob([svg], { type: "image/svg+xml" }),
+  );
+  const image = get<HTMLImageElement>("export-preview");
+  image.src = exportPreviewUrl;
+  image.hidden = false;
+}
+get("export-current").onclick = () => {
+  playing = false;
+  updateControls();
+  try {
+    const svg = view.exportSvg({
+      title: `${patterns[sim.pattern].name} · ${Math.round(sim.progress * 100)}%`,
+    });
+    downloadExport(
+      new Blob([svg], { type: "image/svg+xml" }),
+      `${sim.pattern}-${Math.round(sim.progress * 100)}.svg`,
+    );
+    previewExport(svg);
+    get("export-status").textContent =
+      `Current view exported · ${Math.round(new Blob([svg]).size / 1024)} KB`;
+  } catch (error) {
+    get("export-status").textContent =
+      error instanceof Error ? error.message : "Export failed.";
+  }
+};
+get("export-series").onclick = async () => {
+  playing = false;
+  updateControls();
+  const button = get<HTMLButtonElement>("export-series");
+  button.disabled = true;
+  const currentButton = get<HTMLButtonElement>("export-current");
+  currentButton.disabled = true;
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed;left:-10000px;top:0;width:${get("viewer").clientWidth}px;height:${get("viewer").clientHeight}px;pointer-events:none;`;
+  document.body.append(host);
+  let exporter: ThreePaperRenderer | undefined;
+  try {
+    const pattern = sim.pattern,
+      count = patterns[pattern].steps.length;
+    const subdivisions = Number(get<HTMLSelectElement>("export-steps").value),
+      total = count * subdivisions;
+    const paper = createPaper({
+      pattern,
+      width: sim.width,
+      height: sim.height,
+      thickness: sim.thickness,
+      imperfection: sim.imperfection,
+      seed: sim.seed,
+    });
+    const poses = get<HTMLInputElement>("camera-follow").checked
+      ? cameraViews.get(pattern)!.map((p) => ({ ...p }))
+      : [view.captureCameraView()];
+    exporter = new ThreePaperRenderer(host, paper, {
+      borders: get<HTMLInputElement>("borders").checked,
+      borderWidth: Number(get<HTMLInputElement>("border-width").value),
+    });
+    exporter.setCreases(get<HTMLInputElement>("creases").checked);
+    exporter.setCameraSequence(poses);
+    const files: { name: string; content: string }[] = [];
+    for (let step = 0; step <= total; step++) {
+      get("export-status").textContent =
+        `Exporting frame ${step + 1} of ${total + 1}…`;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+      const progress = step / total;
+      paper.setProgress(progress);
+      exporter.setCameraProgress(progress);
+      const svg = exporter.exportSvg({
+        title: `${patterns[pattern].name} · ${Math.round(progress * 100)}%`,
+      });
+      files.push({
+        name: `${String(step).padStart(2, "0")}-${pattern}-${Math.round(progress * 100)}.svg`,
+        content: svg,
+      });
+    }
+    files.push({
+      name: "sequence.json",
+      content: JSON.stringify(
+        {
+          pattern,
+          imperfection: paper.imperfection,
+          seed: paper.seed,
+          cameraViews: poses,
+          frames: files.map((file, i) => ({
+            file: file.name,
+            progress: i / total,
+          })),
+        },
+        null,
+        2,
+      ),
+    });
+    downloadExport(svgZip(files), `${pattern}-svg-series.zip`);
+    previewExport(files[total].content);
+    get("export-status").textContent =
+      `${total + 1} SVGs exported in one ZIP. Your current fold is unchanged.`;
+  } catch (error) {
+    get("export-status").textContent =
+      error instanceof Error ? error.message : "Export failed.";
+  } finally {
+    exporter?.dispose();
+    host.remove();
+    button.disabled = false;
+    currentButton.disabled = false;
+  }
 };
 setupCameraEditor();
 updateControls();
