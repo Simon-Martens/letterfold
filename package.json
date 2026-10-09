@@ -1,0 +1,44 @@
+{
+  "name": "letterfold",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "npm run build:demo && npm run build:lib",
+    "test": "tsx --test tests/*.test.ts",
+    "build:demo": "tsc --noEmit && vite build",
+    "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "prepack": "npm run build:lib"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/three": "^0.180.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  },
+  "files": [
+    "dist/lib",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
+    },
+    "./three": {
+      "types": "./dist/lib/three.d.ts",
+      "import": "./dist/lib/three.js"
+    },
+    "./experimental": {
+      "types": "./dist/lib/physics.d.ts",
+      "import": "./dist/lib/experimental.js"
+    }
+  },
+  "types": "./dist/lib/index.d.ts"
+}

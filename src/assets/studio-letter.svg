@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+  <rect width="210" height="297" fill="#f9edcf"/>
+  <path d="M0 0H210V20H0Z" fill="#233e87"/>
+  <path d="M0 277H210V297H0Z" fill="#233e87"/>
+  <g fill="none" stroke="#233e87" stroke-width=".6"><rect x="12" y="32" width="186" height="233"/><path d="M24 70H186M24 233H186"/></g>
+  <g fill="#233e87" font-family="Georgia,serif">
+    <text x="24" y="53" font-size="12">POST / SCRIPT</text>
+    <text x="24" y="63" font-family="sans-serif" font-size="3" letter-spacing="1.2">SMALL THOUGHTS, SENT WITH CARE</text>
+    <text x="24" y="174" font-size="11" font-style="italic">A little something</text>
+    <text x="24" y="188" font-size="11" font-style="italic">to keep.</text>
+    <text x="24" y="211" font-family="sans-serif" font-size="3.4">Folded by hand. Carried across the distance.</text>
+    <text x="24" y="218" font-family="sans-serif" font-size="3.4">An ordinary sheet, with a thought inside.</text>
+    <text x="24" y="249" font-family="sans-serif" font-size="3" letter-spacing="1">CORRESPONDENCE NO. 001</text>
+  </g>
+  <circle cx="105" cy="117" r="31" fill="#ea6c42"/>
+  <g stroke="#f9edcf" stroke-width="1.6" fill="none"><path d="M75 117H135M105 87V147M84 96L126 138M84 138L126 96"/><circle cx="105" cy="117" r="19"/></g>
+</svg>
