@@ -1,5 +1,11 @@
 import { visibleBorderSegments } from "./border-visibility";
-import { sealGeometry, type PaperSealOptions } from "./seal";
+import {
+  sealGeometry,
+  attachSeal,
+  brokenSealGeometry,
+  type PaperSealState,
+  type PaperSealOptions,
+} from "./seal";
 import {
   exportSchematicSvg,
   type SchematicSvgOptions,
@@ -117,6 +123,8 @@ export class ThreePaperRenderer {
     }),
   );
   private sealStamp = -1;
+  private sealRevision = -1;
+  private sealState: PaperSealState = { attachment: null, broken: false };
   private meshRevision = -1;
   private stateVersion = -1;
   private front: THREE.MeshStandardMaterial;
@@ -507,7 +515,7 @@ export class ThreePaperRenderer {
       { ...options, width, height },
     );
   }
-  /** Add decorative wax across the closing seam. Hidden until fully folded. */
+  /** Apply wax at closure; reopening leaves material-bound fragments. */
   setSeal(options: boolean | PaperSealOptions) {
     const next =
       options === false ? null : options === true ? {} : { ...options };
@@ -516,13 +524,30 @@ export class ThreePaperRenderer {
       check.dispose();
     }
     this.sealOptions = next;
+    this.setSealState({ attachment: null, broken: false });
     this.sealStamp = -1;
     this.borderStamp = "";
     this.seal.visible = false;
   }
+  /** Snapshot for export; attachments are immutable material coordinates. */
+  getSealState(): PaperSealState {
+    return { ...this.sealState };
+  }
+  setSealState(state: PaperSealState) {
+    this.sealState = { ...state };
+    this.sealRevision = this.simulation.revision ?? -1;
+    this.sealStamp = -1;
+    this.borderStamp = "";
+  }
   private updateSeal() {
+    if (this.sealRevision !== (this.simulation.revision ?? -1))
+      this.setSealState({ attachment: null, broken: false });
+    const closed = (this.simulation.progress ?? 0) >= 1;
+    if (this.sealOptions && closed && !this.sealState.attachment)
+      this.sealState.attachment = attachSeal(this.simulation, this.sealOptions);
+    if (this.sealState.attachment && !closed) this.sealState.broken = true;
     this.seal.visible =
-      this.sealOptions !== null && (this.simulation.progress ?? 0) >= 1;
+      this.sealOptions !== null && this.sealState.attachment !== null;
     if (
       !this.seal.visible ||
       (this.simulation.stateVersion !== undefined &&
@@ -530,7 +555,9 @@ export class ThreePaperRenderer {
     )
       return;
     this.seal.geometry.dispose();
-    this.seal.geometry = sealGeometry(this.simulation, this.sealOptions!);
+    this.seal.geometry = this.sealState.broken
+      ? brokenSealGeometry(this.simulation, this.sealState.attachment!)
+      : sealGeometry(this.simulation, this.sealOptions!);
     this.sealStamp = this.simulation.stateVersion ?? -1;
   }
   setCreases(value: boolean) {

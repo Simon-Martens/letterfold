@@ -202,13 +202,13 @@ Selecting this preset in the demo switches to the estimated sheet proportions an
 
 ## Wax seals
 
-Enable **Wax seal on closed letter** to add a decorative red wax disk across the closing flap edge. It is enabled by default when selecting the Lenz reconstruction and appears only at 100% closure (disappearing when you unfold). The seal is shown in the 3D preview and the final SVG/series frame. It does not glue or constrain the simulated paper.
+Enable **Wax seal on closed letter** to add a decorative red wax disk across the closing flap edge. It is enabled by default when selecting the Lenz reconstruction and is applied at 100% closure. Reopening breaks it into irregular pieces that remain attached to the material on the closing flap and the underlying flap. Those pieces persist while seeking or folding again, and appear in the 3D preview and SVG exports. Resetting the paper, changing its geometry, or toggling the seal starts with fresh wax. It does not glue or constrain the simulated paper.
 
 Use `viewer.setSeal(true)` / `viewer.setSeal(false)`, or configure an anchor with `viewer.setSeal({u: 0.46, v: 0.01, radius: 0.045, side: "front"})`. `u` and `v` are coordinates on the original unfolded sheet (0–1, with v=0 at the bottom); radius is a fraction of the shorter sheet dimension. These defaults place the seal across the short lower flap's closing edge in the Lenz preset. Other patterns may require their own anchor and side. `PaperRendererOptions.seal` accepts the same values, and `PaperSealOptions` is exported from `letterfold/three`.
 
 ## WebM animation export
 
-Choose **Export WebM** in the demo for a complete folding animation or a fold/unfold loop, at 1, 2, 4 or 6 seconds per fold. It includes both sides' artwork, borders, crease guides, lighting, saved camera motion and the closing seal. The editor is locked during recording, with a Cancel button, and restores your previous pose afterwards.
+Choose **Export WebM** in the demo for a complete folding animation, an **Unfold sealed letter** animation, or a fold/unfold loop, at 1, 2, 4 or 6 seconds per fold. It includes both sides' artwork, borders, crease guides, lighting, saved camera motion and the closing seal. The editor is locked during recording, with a Cancel button, and restores your previous pose afterwards.
 
 Each frame is rendered at an exact 1/30-second sample, then encoded offline to VP8 WebM. Slow rendering increases export time without dropping frames or changing playback speed. The longest dimension is capped at 1280 pixels. Export defaults to **Transparent**, with an optional cream background. The preview has a checkerboard to show transparency; alpha playback depends on the destination browser/player.
 
@@ -221,3 +221,5 @@ Embed the downloaded file without loading letterfold or Three.js:
 ```html
 <video src="letter-animation.webm" autoplay loop muted playsinline controls></video>
 ```
+
+Seal placement is captured from the closed sheet: small wax triangles are assigned to the nearest paper surface underneath, then follow that material as it moves. This is a schematic fracture, not a wax fracture physics solver. `viewer.getSealState()` / `viewer.setSealState(state)` preserve the applied/broken state for an identical paper mesh; reset it when changing topology. SVG series inherit the current seal state. Video export starts a fresh sealing sequence (or begins sealed for **Unfold sealed letter**) and restores the editor state afterward, including on cancellation. Enable **Wax seal on closed letter** for wax in these animations.

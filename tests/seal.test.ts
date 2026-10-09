@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createPaper } from "../src/paper";
-import { sealGeometry } from "../src/seal";
+import { sealGeometry, attachSeal, brokenSealGeometry } from "../src/seal";
 import { exportSchematicSvg } from "../src/svg-export";
 test("short lower flap closes outside the long upper flap", () => {
   const p = createPaper({ pattern: "lenz-1776" });
@@ -39,5 +39,46 @@ test("seal attaches to the closing flap, stays finite with crooked folds and exp
     assert.match(svg, /#992c26/);
     geometry.dispose();
     assert.throws(() => sealGeometry(p, { u: 2 }));
+  }
+});
+
+test("broken wax follows two different material flaps after reopening", () => {
+  for (const imperfection of [0, 2]) {
+    const p = createPaper({ pattern: "lenz-1776", imperfection, seed: 42 });
+    p.setProgress(1);
+    const attachment = attachSeal(p, {});
+    assert.ok(attachment.vertices.length > 300);
+    p.setProgress(0);
+    const geometry = brokenSealGeometry(p, attachment);
+    const positions = geometry.getAttribute("position");
+    const ys = Array.from({ length: positions.count }, (_, i) =>
+      positions.getY(i),
+    );
+    assert.ok(
+      ys.some((y) => y < -p.height * 0.4),
+      "wax remains on short lower flap",
+    );
+    assert.ok(
+      ys.some((y) => y > p.height * 0.1),
+      "wax remains on long upper flap",
+    );
+    assert.ok(Array.from(positions.array).every(Number.isFinite));
+    for (let i = 0; i < positions.count; i += 3) {
+      const y = ys.slice(i, i + 3);
+      assert.ok(
+        Math.max(...y) - Math.min(...y) < p.height * 0.1,
+        "no wax triangle bridges the two separated flaps",
+      );
+    }
+    const before = Array.from(positions.array);
+    p.setProgress(0.9);
+    p.setProgress(0);
+    const repeated = brokenSealGeometry(p, attachment);
+    assert.deepEqual(
+      Array.from(repeated.getAttribute("position").array),
+      before,
+    );
+    geometry.dispose();
+    repeated.dispose();
   }
 });
