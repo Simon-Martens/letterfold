@@ -210,7 +210,11 @@ Use `viewer.setSeal(true)` / `viewer.setSeal(false)`, or configure an anchor wit
 
 Choose **Export WebM** in the demo for a complete folding animation or a fold/unfold loop, at 1, 2, 4 or 6 seconds per fold. It includes both sides' artwork, borders, crease guides, lighting, saved camera motion and the closing seal. The editor is locked during recording, with a Cancel button, and restores your previous pose afterwards.
 
-The browser records in real time using MediaRecorder, targeting 30 fps with the longest dimension capped at 1280 pixels. Complex folds or slower devices can reduce frame rate. Keep the tab visible; hiding it cancels the export. The background is solid cream; transparency is not exported. WebM recording support is detected before enabling export. No encoding library is downloaded. `recordWebm` and `webmMimeType` are available from `letterfold/three` for custom integrations.
+Each frame is rendered at an exact 1/30-second sample, then encoded offline to VP8 WebM. Slow rendering increases export time without dropping frames or changing playback speed. The longest dimension is capped at 1280 pixels. Export defaults to **Transparent**, with an optional cream background. The preview has a checkerboard to show transparency; alpha playback depends on the destination browser/player.
+
+The single-thread FFmpeg WebAssembly encoder (~32 MB) loads only when exporting and runs locally in a worker. Nothing is uploaded. Cancel works during rendering and encoding, and releases the encoder's memory. PNG frame storage is limited to 256 MB; use a shorter duration if the limit is reached. Embedded videos require neither FFmpeg nor Three.js.
+
+`recordWebm` and `webmMimeType` are available from `letterfold/three`. `recordWebm` accepts `transparent` (default true), `onStatus`, and `encoderBaseURL`. For a custom deployment, host the ESM `ffmpeg-core.js` and `ffmpeg-core.wasm` from `@ffmpeg/core` at that URL (default `encoder/` relative to the page). The demo's predev/prebuild script copies these assets automatically. FFmpeg core is distributed under GPL-2.0-or-later; see the generated encoder notice for source/build instructions.
 
 Embed the downloaded file without loading letterfold or Three.js:
 

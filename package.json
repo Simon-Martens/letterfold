@@ -9,9 +9,13 @@
     "test": "tsx --test tests/*.test.ts",
     "build:demo": "tsc --noEmit && vite build",
     "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
-    "prepack": "npm run build:lib"
+    "prepack": "npm run build:lib",
+    "predev": "node scripts/copy-video-encoder.mjs",
+    "prebuild:demo": "node scripts/copy-video-encoder.mjs"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
     "three": "^0.180.0"
   },
   "devDependencies": {
