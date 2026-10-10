@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>1776 border visibility audit</title>
+    <style>
+      body {
+        font: 14px system-ui;
+        margin: 24px;
+        background: #eeeae1;
+        color: #28362e;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        background: #eeeae1;
+        padding: 12px;
+        z-index: 1;
+      }
+      label {
+        margin-right: 15px;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 6px;
+      }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      figure {
+        margin: 0;
+        background: #faf8f1;
+      }
+      canvas {
+        width: 100%;
+        display: block;
+      }
+      figcaption {
+        padding: 8px;
+      }
+      #stage {
+        position: fixed;
+        left: -2000px;
+        top: 0;
+        width: 600px;
+        height: 440px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>1776 reconstruction · border audit</h1>
+      <label
+        >Fold stage
+        <select id="pose">
+          <option value="0">Open</option>
+          <option value="0.625">Long flap moving · 62.5%</option>
+          <option value="0.75">Long flap closed · 75%</option>
+          <option value="0.875">Short flap moving · 87.5%</option>
+          <option value="0.99">Almost closed · 99%</option>
+          <option value="1" selected>Closed · 100%</option>
+        </select></label
+      ><label
+        >Imperfection
+        <select id="crooked">
+          <option value="0">0°</option>
+          <option value="2">2°</option>
+        </select></label
+      ><label
+        >Border width
+        <select id="width">
+          <option value="2">2 px</option>
+          <option value="6" selected>6 px</option>
+        </select></label
+      ><label
+        ><input id="details" type="checkbox" />Seal and crease guides</label
+      ><button id="run">Render views</button>
+      <p id="status" role="status">Ready</p>
+    </header>
+    <div id="grid"></div>
+    <div id="stage"></div>
+    <script type="module" src="./border-views.ts"></script>
+  </body>
+</html>

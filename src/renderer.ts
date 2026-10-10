@@ -1,3 +1,4 @@
+import { physicalBorderSegments } from "./border-candidates";
 import { visibleBorderSegments } from "./border-visibility";
 import {
   sealGeometry,
@@ -142,15 +143,18 @@ export class ThreePaperRenderer {
     color: 0x000000,
     linewidth: 2,
     worldUnits: false,
-    depthTest: true,
+    // Centerlines are already occlusion-clipped; depth-testing widened quads
+    // against their own surface removes valid strokes near folds.
+    depthTest: false,
     depthWrite: false,
     alphaToCoverage: true,
+    // Blend overlapping antialiased end caps instead of punching alpha holes.
+    transparent: true,
     toneMapped: false,
   });
   private borders = new LineSegments2(this.borderGeometry, this.borderMaterial);
   private outlineEdges: { a: number; b: number; faces: number[] }[] = [];
   private borderStamp = "";
-  private faceSigns = new Int8Array(0);
   private ambient = new THREE.AmbientLight(0xfffcf5, 2.6);
   private keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
   private cameraSequence: PaperCameraView[] = [];
@@ -599,7 +603,6 @@ export class ThreePaperRenderer {
             else edgeMap.set(key, { a, b, faces: [face] });
           }
         this.outlineEdges = [...edgeMap.values()];
-        this.faceSigns = new Int8Array(paper.indices.length / 3);
         this.borderStamp = "";
         this.geometry.setIndex(paper.indices);
         this.backGeometry.setIndex(paper.indices);
@@ -715,58 +718,12 @@ export class ThreePaperRenderer {
     const stamp = `${this.stateVersion}:${camera.x}:${camera.y}:${camera.z}:${this.camera.quaternion.toArray()}:${this.camera.projectionMatrix.elements}`;
     if (paper.stateVersion !== undefined && stamp === this.borderStamp) return;
     this.borderStamp = stamp;
-    const p = paper.positions;
-    for (let f = 0; f < this.faceSigns.length; f++) {
-      const a = paper.indices[f * 3] * 3,
-        b = paper.indices[f * 3 + 1] * 3,
-        c = paper.indices[f * 3 + 2] * 3;
-      const ux = p[b] - p[a],
-        uy = p[b + 1] - p[a + 1],
-        uz = p[b + 2] - p[a + 2],
-        vx = p[c] - p[a],
-        vy = p[c + 1] - p[a + 1],
-        vz = p[c + 2] - p[a + 2];
-      const nx = uy * vz - uz * vy,
-        ny = uz * vx - ux * vz,
-        nz = ux * vy - uy * vx;
-      const dot =
-        nx * (camera.x - p[a]) +
-        ny * (camera.y - p[a + 1]) +
-        nz * (camera.z - p[a + 2]);
-      this.faceSigns[f] = dot >= 0 ? 1 : -1;
-    }
-    const lines: number[] = [];
-    const halfThickness = (paper.thickness ?? 0) / 2;
-    for (const edge of this.outlineEdges) {
-      // Paper perimeter plus view-dependent silhouettes of rounded folds.
-      if (
-        edge.faces.length > 1 &&
-        this.faceSigns[edge.faces[0]] === this.faceSigns[edge.faces[1]]
-      )
-        continue;
-      for (const v of [edge.a, edge.b]) {
-        const i = v * 3,
-          dx = camera.x - p[i],
-          dy = camera.y - p[i + 1],
-          dz = camera.z - p[i + 2],
-          length = Math.hypot(dx, dy, dz);
-        const normals =
-          paper.normals ?? this.geometry.getAttribute("normal").array;
-        const nx = normals[i],
-          ny = normals[i + 1],
-          nz = normals[i + 2];
-        const side = nx * dx + ny * dy + nz * dz >= 0 ? 1 : -1;
-        // Stay on this sheet's physical face. A view-ray lift divided by
-        // incidence can cross several layers near a crooked, grazing crease.
-        const offset = side * halfThickness;
-        const clearance = Math.min(1e-8, halfThickness * 0.01);
-        lines.push(
-          p[i] + nx * offset + (dx / length) * clearance,
-          p[i + 1] + ny * offset + (dy / length) * clearance,
-          p[i + 2] + nz * offset + (dz / length) * clearance,
-        );
-      }
-    }
+    this.camera.updateMatrixWorld();
+    const lines = physicalBorderSegments(
+      [this.geometry, this.backGeometry],
+      this.outlineEdges,
+      this.camera,
+    );
     this.borderGeometry.dispose();
     this.borderGeometry = new LineSegmentsGeometry();
     const visible = visibleBorderSegments(

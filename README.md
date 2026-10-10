@@ -223,3 +223,9 @@ Embed the downloaded file without loading letterfold or Three.js:
 ```
 
 Seal placement is captured from the closed sheet: small wax triangles are assigned to the nearest paper surface underneath, then follow that material as it moves. This is a schematic fracture, not a wax fracture physics solver. `viewer.getSealState()` / `viewer.setSealState(state)` preserve the applied/broken state for an identical paper mesh; reset it when changing topology. SVG series inherit the current seal state. Video export starts a fresh sealing sequence (or begins sealed for **Unfold sealed letter**) and restores the editor state afterward, including on cancellation. Enable **Wax seal on closed letter** for wax in these animations.
+
+### Border visibility audit
+
+With the development server running, open `/tests/border-views.html` to compare eight camera angles of the 1776 reconstruction. Choose the fold stage, 0° or 2° imperfection, 2 px or 6 px borders, and optional wax/crease guides. It renders snapshots sequentially with one renderer, then disposes it. The automated border tests also check the closed packet's silhouette extents across 48 camera/imperfection combinations and reject degenerate mesh edges.
+
+Outlines are extracted from both physical paper surfaces, clipped against paper and wax, then drawn as blended strokes. This keeps rounded silhouettes visible while preventing buried edge centerlines from showing through. At grazing angles, strokes from genuinely exposed, closely spaced layers can merge at large border widths.
