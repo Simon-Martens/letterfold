@@ -1,4 +1,5 @@
 import { physicalBorderSegments } from "./border-candidates";
+import { centerPaperInView } from "./camera-framing";
 import { visibleBorderSegments } from "./border-visibility";
 import {
   sealGeometry,
@@ -337,6 +338,8 @@ export class ThreePaperRenderer {
   }
   private updateCameraSequence() {
     if (!this.followCamera) return;
+    // Rebuild the pivot each frame so seeking never accumulates framing offsets.
+    this.geometry.boundingBox?.getCenter(this.controls.target);
     const view = sampleCameraSequence(this.cameraSequence, this.cameraProgress);
     const azimuth = THREE.MathUtils.degToRad(view.azimuth);
     const elevation = THREE.MathUtils.degToRad(view.elevation);
@@ -364,6 +367,9 @@ export class ThreePaperRenderer {
     this.camera.lookAt(this.controls.target);
     this.camera.rotateZ(-roll);
     this.camera.up.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
+    this.controls.target.add(
+      centerPaperInView(this.camera, [this.geometry, this.backGeometry]),
+    );
   }
   home(top = false) {
     this.setCameraFollowing(false);

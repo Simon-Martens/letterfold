@@ -174,7 +174,7 @@ viewer.setCameraFollowing(false);
 const pose = viewer.captureCameraView();
 ```
 
-`PaperCameraView` and `sampleCameraSequence` are exported from `letterfold/three`. Sequences interpolate smoothly between evenly spaced fold endpoints, using the shortest angular path. Seeking and reversing reproduce the same camera pose. Setting an empty sequence disables following. Distances supported by the sequence API are 0.2–10 sheet diagonals.
+`PaperCameraView` and `sampleCameraSequence` are exported from `letterfold/three`. Sequences interpolate smoothly between evenly spaced fold endpoints, using the shortest angular path. Saved views keep the projected paper centered as it rotates and folds, including SVG and WebM exports. Framing shifts the camera parallel to its image plane without changing angles, roll or depth; free orbit/pan stays manual. Seeking and reversing reproduce the same camera pose. Setting an empty sequence disables following. Distances supported by the sequence API are 0.2–10 sheet diagonals.
 
 Use **Import front SVG** and **Import back SVG** in the demo. Each accepts a separate SVG up to 2 MB and has its own reset control. Concurrent loading and resets are tracked independently for each side.
 
